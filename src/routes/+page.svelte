@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
   import { onMount } from "svelte";
   import { dndzone } from "svelte-dnd-action";
 
@@ -165,53 +165,192 @@
     <div class="mt-2 text-base text-gray-600">{data.result}</div>
   </div>
 {/if}
+</div> -->
+
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { Pinecone } from '@pinecone-database/pinecone';
+
+  let data = null;
+  let error = null;
+  let query = '';
+  let pokemonImage = null;
+
+  onMount(() => {
+    const textBox = document.getElementById("myTextBox");
+    textBox.addEventListener("keyup", function(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        printTextBoxValue();
+      }
+    });
+  });
+
+  async function fetchData(query) {
+    try {
+      console.log('fetching data');
+      const response = await fetch('/api/wrapper/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: query }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      const result = await response.json();
+      data = result;
+      console.log(data);
+      
+      // Fetch Pokémon image
+      await fetchPokemonImage(query);
+    } catch (err) {
+      error = err.message;
+    }
+  }
+
+  async function fetchPokemonImage(query) {
+    try {
+      const pokemonName = query.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`);
+      if (!response.ok) {
+        throw new Error(`Pokémon not found`);
+      }
+      const pokemonData = await response.json();
+      pokemonImage = pokemonData.sprites.other['official-artwork'].front_default;
+    } catch (err) {
+      console.error('Error fetching Pokémon image:', err);
+      pokemonImage = null;
+    }
+  }
+
+  function printTextBoxValue() {
+    const textBox = document.getElementById("myTextBox");
+    const value = textBox.value;
+    console.log(value);
+    fetchData(textBox.value);
+  }
+</script>
+
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+  :global(body) {
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+
+  .bg-image {
+    background-image: url('../assets/bg.png');
+    background-size: cover;
+    background-position: center;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .content-wrapper {
+    width: 90%;
+    max-width: 850px;
+    background-color: rgba(255, 255, 255, 0.6); /* More transparent background */
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    text-align: center;
+    backdrop-filter: blur(10px); /* Add blur effect for better readability */
+  }
+
+  h1 {
+    font-size: 3rem;
+    color: #2c3e50;
+    margin-bottom: 30px;
+    transition: color 0.3s ease;
+  }
+
+  h1:hover {
+    color: #3498db;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 2px solid #3498db;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    background-color: rgba(255, 255, 255, 0.8); /* Slightly transparent input */
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: #2980b9;
+    background-color: rgba(255, 255, 255, 0.9); /* Less transparent when focused */
+  }
+
+  button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  button:hover {
+    background-color: #2980b9;
+  }
+
+  .result-container {
+    margin-top: 40px;
+    background-color: rgba(255, 255, 255, 0.8); /* More transparent result container */
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .result-container h2 {
+    color: #2c3e50;
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+  }
+
+  .result-container p {
+    color: #34495e;
+    font-size: 1.1rem;
+    line-height: 1.6;
+  }
+
+  .pokemon-image {
+    max-width: 200px;
+    margin: 20px auto;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  }
+</style>
+
+<div class="bg-image">
+  <div class="content-wrapper">
+    <h1>Explore the World of Pokémon!</h1>
+    <input id="myTextBox" type="text" placeholder="Type a Pokémon name or your question here...">
+    <button on:click={printTextBoxValue}>Submit</button>
+    
+    {#if pokemonImage}
+      <img src={pokemonImage} alt="Pokémon" class="pokemon-image">
+    {/if}
+
+    {#if data != null}
+      <div class="result-container">
+        <h2>Result</h2>
+        <p>{data.result}</p>
+      </div>
+    {/if}
+  </div>
 </div>
 
-<!-- <script lang="ts">
-import { Pinecone } from '@pinecone-database/pinecone';
-
-let data = null;
-let error = null;
-let query = '';
-
-async function fetchData(query) {
-  try {
-    console.log('fetching data');
-    const response = await fetch('/api/wrapper/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      }, 
-      body: JSON. stringify({ query: query }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error ${response.status}`);
-    }
-    const result = await response.json();
-    data = result;
-    console. log(data);
-  } catch (err) {
-    error = err.message;
-  }
-}
-  
-  function printTextBoxValue() {
-      const textBox = document.getElementById("myTextBox");
-      const value = textBox.value;
-      console.log(value);
-      fetchData(textBox.value);
-  }
-  </script>
-  
-  <div class="flex flex-col w-2/3 ml-10 items-center">
-      <h1 class="p-5 text-6xl hover:text-sky-700">Ask kishore about pokemon!</h1>
-      <input id="myTextBox" type="text" class="p-2 w-full border border-gray-300">
-      <button on:click={printTextBoxValue} class="p-2 bg-sky-700 text-white">Submit</button>
-
-      {#if data != null}
-      <div class="m-20"> Result = {data.result}</div>
-      {/if}
-    
-  </div>
-   -->
